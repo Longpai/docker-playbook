@@ -1,0 +1,106 @@
+---
+- name: Check if xdxgpu_driver is installed
+  become: yes
+  command: rpm -q xdxgpu
+  register: driver_status
+  ignore_errors: yes
+
+- name: Copy the driver rpm package
+  copy:
+    src: dist/xdxgpu-1.10-108.x86_64.rpm
+    dest: /tmp/xdxgpu_driver.rpm
+  when: driver_status.rc != 0
+
+- name: Install the driver rpm package
+  become: yes
+  command: rpm -i /tmp/xdxgpu_driver.rpm --force
+  when: driver_status.rc != 0
+  notify: Reboot the machine
+
+- name: Install docker and some related base packages
+  become: yes
+  become_user: root
+  become_method: sudo
+  yum:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - docker-engine
+    - docker-compose
+    - wget
+  environment: 
+   http_proxy: "{{ http_proxy }}"
+   https_proxy: "{{ http_proxy }}"
+
+- name: Check if the docker group exists
+  become: yes
+  group:
+    name: docker
+    state: present
+
+- name: Check if the user in docker group
+  become: yes
+  user: 
+    name: "{{ ansible_env.USER }}"
+    groups: docker
+    append: yes
+
+- name: Query the hosts config if it needs to be changed
+  shell: cat /etc/hosts | grep hub.xdxct.com
+  register: hosts_status
+  ignore_errors: yes
+
+- name: Modification hosts file
+  become: yes
+  become_user: root
+  # become_method: sudo
+  command: sh -c 'echo "10.211.10.15 hub.xdxct.com" >> /etc/hosts'
+  when: hosts_status.rc != 0
+
+- name: Check if xdxct.com.crt exists
+  become: yes
+  stat:
+    path: /etc/docker/certs.d/hub.xdxct.com/xdxct.com.crt
+  register: file_info
+
+- name: Create the hub.xdxct.com directory
+  become: yes
+  file:
+    path: /etc/docker/certs.d/hub.xdxct.com
+    state: directory
+  when: not file_info.stat.exists
+
+- name: Copy the repository crt
+  become: yes
+  copy:
+    src: xdxct.com.crt
+    dest: /etc/docker/certs.d/hub.xdxct.com/xdxct.com.crt
+  when: not file_info.stat.exists
+  notify: Restart the docker
+
+- name: Login to the hub.xdxct.com
+  shell: echo -e "Harbor12345" | docker login hub.xdxct.com
+
+- name: Check if xdxct-container-runtime rpm package is installed
+  become: yes
+  command: rpm -q xdxct-container-runtime
+  register: runtime_status
+  ignore_errors: yes
+
+- name: Check if the docker installer of xdxct-container-runtime is installed
+  become: yes
+  stat:
+    path: /usr/local/xdxct/toolkit
+  register: toolkit_status
+
+  
+- name: Distribute the xdxct container runtime installer
+  copy:
+    src: xdxct_runtime_installer.sh
+    dest: /tmp/xdxct_runtime_installer.sh
+    mode: 0755
+  when: runtime_status.rc != 0 and not toolkit_status.stat.exists
+
+- name: Execute the xdxct container runtime installer
+  become: yes
+  command: /tmp/xdxct_runtime_installer.sh {{ runtime_installer_image_rpm }}

@@ -1,0 +1,18 @@
+---
+- hosts: deb
+  remote_user: xiaoqing
+  tags: deb
+  roles:
+    - deb_runtime_install
+
+- hosts: rpm
+  remote_user: xiaoqing
+  tags: rpm
+  roles:
+    - rpm_runtime_install
+  
+- hosts: ubuntu
+  remote_user: test
+  tags: ubuntu
+  roles:
+    - deb_runtime_install

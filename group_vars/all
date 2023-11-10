@@ -1,0 +1,9 @@
+# Here are variables related to the docker-runtime-installer
+
+# 如果集群所有机器均能访问外网，请注释所有 environment 环境变量，如 main.yml 31-33行
+http_proxy: http://10.191.20.118:3128
+
+http_server: http://10.211.10.15:5020
+# 这些变量便于版本维护
+runtime_installer_image_rpm: hub.xdxct.com/xdxct-docker/container-toolkit:1.0.0-rc.1-centos7
+runtime_installer_image_deb: hub.xdxct.com/xdxct-docker/container-toolkit:1.0.0-rc.1-ubuntu20.04
