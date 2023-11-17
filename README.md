@@ -10,25 +10,26 @@
 https://ansible-tran.readthedocs.io/en/latest/docs/intro.html
 
 目录结构如下
-
+	
 	.
 	├── group_vars					# 全局变量
 	│   └── all						
-	├── hosts						# 集群主机信息
+	├── hosts					# 集群主机信息
 	├── LICENSE.md
 	├── README.md
 	├── roles						
-	│   ├── deb_runtime_install		# 用于配置 deb 系列发行版
+	│   ├── deb_runtime_install			# 用于配置 deb 系列发行版
 	│   │   ├── files				# 存放需要发送给 Node 的文件
-	│   │   ├── handlers			# 用于便捷性的系统重启和服务重启
+	│   │   ├── handlers				# 用于便捷性的系统重启和服务重启
 	│   │   ├── tasks				# 存放任务主逻辑
-	│   │   └── templates			# 存放所需部署服务的配置文件
-	│   ├── rpm_runtime_install		# 用于配置 rpm 系列发行版
+	│   │   └── templates				# 存放所需部署服务的配置文件
+	│   ├── rpm_runtime_install			# 用于配置 rpm 系列发行版
 	│   │   ├── files
 	│   │   ├── handlers
 	│   │   ├── tasks
 	│   │   └── templates
 	└── site.yml					# 主入口
+
 
 1. 安装 master 环境
 首先，需要在 master 机器上安装 Ansible，可以通过如下命令安装 
