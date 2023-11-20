@@ -10,7 +10,7 @@
 https://ansible-tran.readthedocs.io/en/latest/docs/intro.html
 
 目录结构如下
-	
+
 	.
 	├── group_vars					# 全局变量
 	│   └── all						
@@ -34,7 +34,7 @@ https://ansible-tran.readthedocs.io/en/latest/docs/intro.html
 1. 安装 master 环境
 首先，需要在 master 机器上安装 Ansible，可以通过如下命令安装 
 
-	sudo apt install ansible
+		sudo apt install ansible
 
 	配置 `/etc/ansible/ansible.cfg`,添加以下字段
 
