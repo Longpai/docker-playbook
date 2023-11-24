@@ -7,6 +7,12 @@ if [ -d "/usr/local/xdxct" ]; then
     exit 0
 fi
 
+if [ -f "/etc/docker/daemon.json" ]; then
+    rm /etc/docker/daemon.json
+    systemctl daemon-reload
+    systemctl restart docker
+fi
+
 docker pull $image
 
 docker run --privileged -it --pid=host \
