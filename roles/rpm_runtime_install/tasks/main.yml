@@ -17,6 +17,9 @@
   when: driver_status.rc != 0
   notify: Reboot the machine
 
+- name: Flush handlers
+  meta: flush_handlers
+
 - name: Install docker and some related base packages
   become: yes
   become_user: root
@@ -31,6 +34,13 @@
   environment: 
    http_proxy: "{{ http_proxy }}"
    https_proxy: "{{ http_proxy }}"
+
+- name: Add the mirror of xdxct
+  yum_repository: 
+    name: xdxct-mirror
+    baseurl: 'http://10.211.10.15:5018'
+    enabled: yes
+    gpgcheck: no
 
 - name: Check if the docker group exists
   become: yes
@@ -79,7 +89,9 @@
   notify: Restart the docker
 
 - name: Login to the hub.xdxct.com
-  shell: echo -e "Harbor12345" | docker login hub.xdxct.com
+  command: docker login -u admin --password-stdin hub.xdxct.com
+  args:
+    stdin: "Harbor12345"
 
 - name: Check if xdxct-container-runtime rpm package is installed
   become: yes
@@ -92,7 +104,6 @@
   stat:
     path: /usr/local/xdxct/toolkit
   register: toolkit_status
-
   
 - name: Distribute the xdxct container runtime installer
   copy:
@@ -104,3 +115,4 @@
 - name: Execute the xdxct container runtime installer
   become: yes
   command: /tmp/xdxct_runtime_installer.sh {{ runtime_installer_image_rpm }}
+  when: runtime_status.rc != 0 and not toolkit_status.stat.exists

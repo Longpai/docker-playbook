@@ -5,4 +5,4 @@ kylin_ser ansible_host=10.191.20.138
 kylin_cli ansible_host=10.191.20.140
 
 [ubuntu]
-ubuntu_cli ansible_host=10.191.20.138
+ubuntu_cli ansible_host=10.191.20.43

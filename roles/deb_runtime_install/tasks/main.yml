@@ -17,6 +17,9 @@
   when: driver_status.rc != 0
   notify: Reboot the machine
 
+- name: Flush handlers
+  meta: flush_handlers
+
 - name: Install some related base packages
   become: yes
   become_user: root
@@ -27,58 +30,74 @@
   with_items:
     - tar
     - wget
+    - apt-transport-https
+    - ca-certificates
+    - curl
+    - software-properties-common
   environment: 
    http_proxy: "{{ http_proxy }}"
    https_proxy: "{{ http_proxy }}"
 
-- name: Check if the docker is installed
-  become: yes
-  command: docker version
-  register: docker_status
-  ignore_errors: yes
-
 - name: debug
   debug:
     var: "{{ ansible_machine }}"
-  
-- name: Copy the docker installation file
-  copy:
-    src: dist/docker-20.10.21-{{ ansible_machine | replace('x86_64', 'amd64') }}.tgz
-    dest: /tmp/
-    mode: 0755
-  when: docker_status.rc != 0
 
-- name: Copy the docker installtation script
-  copy:
-    src: docker_install_{{ ansible_machine }}.sh
-    dest: /tmp/
-    mode: 0755
-  when: docker_status.rc != 0
+- name: Check if the GPG key is exists
+  stat: 
+    path: /usr/share/keyrings/docker-archive-keyring.gpg
+  register: gpg_info
 
-- name: Install docker
+- name: Add the GPG key of docker mirror
   become: yes
-  command: /tmp/docker_install_{{ ansible_machine }}.sh
-  notify: 
-    - Enable the docker
-    - Restart the docker
-  when: docker_status.rc != 0
+  shell: >
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg
+    | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+  when: not gpg_info.stat.exists
+  environment: 
+   http_proxy: "{{ http_proxy }}"
+   https_proxy: "{{ http_proxy }}"
 
-- name: Check if docker.service exists
+- name: Check if the apt-mirrors keys exists
   become: yes
   stat:
-    path: /lib/systemd/system/docker.service
-  register: service_info
+    path: /etc/apt/trusted.gpg.d/vircloud-apt-key.pub
+  register: apt_info
 
-- name: Copy docker.service
+- name: Distribute the key of apt mirror
   become: yes
   copy:
-    src: docker.service
-    dest: /lib/systemd/system/docker.service
+    src: vircloud-apt-key.pub
+    dest: /etc/apt/trusted.gpg.d/vircloud-apt-key.pub
     mode: 0644
-  notify: 
-    - Reload the daemon
-    - Restart the docker
-  when: not service_info.stat.exists
+  when: not apt_info.stat.exists
+
+- name: Add multiple repositories
+  become: yes
+  apt_repository:
+    repo: "{{ item }}"
+    state: present
+  with_items:
+    - 'deb [arch=amd64] http://10.211.10.15:5019 xdxct-vircloud main'
+    - 'deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu {{ ansible_lsb.codename }} stable'
+  environment: 
+   http_proxy: "{{ http_proxy }}"
+   https_proxy: "{{ http_proxy }}"
+
+- name: Install Docker and XDXCT container runtime
+  become: yes
+  become_user: root
+  become_method: sudo
+  apt:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - docker-ce
+    - docker-ce-cli
+    - containerd.io
+    # - xdxct-container-runtime
+  environment: 
+   http_proxy: "{{ http_proxy }}"
+   https_proxy: "{{ http_proxy }}"
 
 - name: Check if docker-compose is installed
   command: docker-compose version
@@ -137,10 +156,16 @@
     src: xdxct.com.crt
     dest: /etc/docker/certs.d/hub.xdxct.com/xdxct.com.crt
   when: not file_info.stat.exists
-  notify: Restart the docker
+  # notify: Restart the docker
+
+- name: Restart the docker
+  become: yes
+  shell: systemctl restart docker
 
 - name: Login to the hub.xdxct.com
-  shell: echo -e "Harbor12345" | docker login hub.xdxct.com
+  command: docker login -u admin --password-stdin hub.xdxct.com
+  args:
+    stdin: "Harbor12345"
 
 - name: Check if xdxct-container-runtime deb package is installed
   become: yes
@@ -164,3 +189,4 @@
 - name: Execute the xdxct container runtime installer
   become: yes
   command: /tmp/xdxct_runtime_installer.sh {{ runtime_installer_image_deb }}
+  when: runtime_status.rc != 0 and not toolkit_status.stat.exists

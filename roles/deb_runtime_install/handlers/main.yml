@@ -4,15 +4,3 @@
   reboot:
     connect_timeout: 300
     reboot_timeout: 600
-
-- name: Restart the docker
-  become: yes
-  shell: systemctl restart docker
-
-- name: Reload the daemon
-  become: yes
-  shell: systemctl daemon-reload
-
-- name: Enable the docker
-  become: yes
-  shell: systemctl enable docker
