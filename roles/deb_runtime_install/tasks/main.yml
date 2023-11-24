@@ -20,6 +20,28 @@
 - name: Flush handlers
   meta: flush_handlers
 
+- name: Check if the mirrors is correct
+  shell: cat /etc/apt/sources.list | grep aliyun
+  register: aliyun
+  ignore_errors: yes
+
+- name: overwrite the sources.list
+  become: yes
+  copy: 
+    src: sources.list
+    dest: /etc/apt/sources.list
+    mode: 0664
+    force: yes
+  when: aliyun.rc != 0
+
+- name: Update apt cache for all repositories
+  become: yes
+  apt:
+    update_cache: yes
+  environment: 
+   http_proxy: "{{ http_proxy }}"
+   https_proxy: "{{ http_proxy }}"
+
 - name: Install some related base packages
   become: yes
   become_user: root
@@ -38,9 +60,9 @@
    http_proxy: "{{ http_proxy }}"
    https_proxy: "{{ http_proxy }}"
 
-- name: debug
-  debug:
-    var: "{{ ansible_machine }}"
+# - name: debug
+#   debug:
+#     var: "{{ ansible_machine }}"
 
 - name: Check if the GPG key is exists
   stat: 
@@ -60,14 +82,14 @@
 - name: Check if the apt-mirrors keys exists
   become: yes
   stat:
-    path: /etc/apt/trusted.gpg.d/vircloud-apt-key.pub
+    path: /etc/apt/trusted.gpg.d/vircloud.gpg
   register: apt_info
 
 - name: Distribute the key of apt mirror
   become: yes
   copy:
-    src: vircloud-apt-key.pub
-    dest: /etc/apt/trusted.gpg.d/vircloud-apt-key.pub
+    src: vircloud.gpg
+    dest: /etc/apt/trusted.gpg.d/vircloud.gpg
     mode: 0644
   when: not apt_info.stat.exists
 
@@ -188,5 +210,6 @@
 
 - name: Execute the xdxct container runtime installer
   become: yes
+  become_user: root
   command: /tmp/xdxct_runtime_installer.sh {{ runtime_installer_image_deb }}
   when: runtime_status.rc != 0 and not toolkit_status.stat.exists
